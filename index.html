@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>一問一答 - Anki風デッキ</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:#f5f5f5;color:#222}
+button,input{font:inherit}button{border:0;border-radius:10px;padding:11px 16px;cursor:pointer;touch-action:manipulation}button:active{transform:scale(.97)}
+.container{max-width:1100px;margin:0 auto;padding:16px}h1{text-align:center;margin:5px 0 18px}
+.screen{display:none}.screen.active{display:block}.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 7px #00000012}
+.tabs,.sheet-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.tabs button,.sheet-tabs button{background:#ddd}.tabs button.active,.sheet-tabs button.active{background:#1976d2;color:#fff}
+.primary{background:#1976d2;color:#fff;font-weight:700}.green{background:#2e7d32;color:#fff}.red{background:#c62828;color:#fff}.gray{background:#555;color:#fff}.light{background:#ddd}.deck-top-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.deck-top-actions button{width:100%}.deck-quiz-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}.deck-quiz-actions button{width:100%}.yamabuki{background:#f8b500;color:#111;font-weight:700}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.deck-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.deck-card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:15px}
+.deck-card h3{margin:0 0 7px;word-break:break-word}.muted{color:#666;font-size:14px}
+table{width:100%;border-collapse:collapse;min-width:650px}th,td{border:1px solid #ccc;padding:8px;vertical-align:top}th{background:#eee}
+td[contenteditable=true]{min-height:35px;outline:none}td[contenteditable=true]:focus{background:#fffde7}
+.table-wrap{overflow-x:auto;border-radius:10px}input[type=text],input[type=search]{width:100%;padding:12px;border:1px solid #bbb;border-radius:9px;background:#fff}
+.search-row{display:flex;gap:8px}.search-row input{flex:1}.result-item{background:#fff;border-radius:10px;padding:12px;margin:8px 0;border:1px solid #ddd;cursor:pointer}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#eee;font-size:12px;margin-right:5px}
+.empty{text-align:center;color:#777;padding:25px}.small{font-size:13px;color:#666}.sheet-note{background:#f1f6ff;padding:10px;border-radius:9px;margin:10px 0}
+.bg-setting{margin-top:18px}.bg-setting img{display:none;width:100%;max-height:230px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid #ccc}
+.progress-line{margin:7px 0}.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.stat-box{background:#fff;border:1px solid #ddd;border-radius:12px;padding:14px;text-align:center}.stat-box .label{font-size:13px;color:#666}.stat-box .value{font-size:28px;font-weight:700;margin-top:4px}
+.chart-wrap{max-width:360px;margin:14px auto 0;text-align:center}.pie{width:260px;height:260px;border-radius:50%;margin:0 auto;background:conic-gradient(#1976d2 0 50%,#ddd 50% 100%);position:relative}
+.pie:after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;background:#fff;left:70px;top:70px}.legend{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:14px}.legend span:before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}.legend .review:before{background:#1976d2}.legend .notreview:before{background:#ddd}
+#quizScreen{position:fixed;inset:0;overflow-y:auto;background:#f5f5f5;background-position:center;background-repeat:no-repeat;background-size:cover;background-attachment:fixed;z-index:20}
+#quizScreen:before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.15);pointer-events:none;z-index:0}
+.quiz-content{position:relative;z-index:1;max-width:900px;margin:auto;padding:75px 16px 25px}
+.quiz-top{position:fixed;top:12px;left:12px;right:12px;z-index:5;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.quiz-top button{pointer-events:auto;background:rgba(255,255,255,.94);border:1px solid #ccc;padding:9px 12px;font-size:14px}
+.quiz-meta{text-align:center;background:rgba(255,255,255,.9);border-radius:10px;padding:8px 12px;width:max-content;max-width:100%;margin:0 auto 10px}
+.quiz-number{text-align:center;color:#555;margin-bottom:14px}
+.question-box,.answer-box{background:rgba(255,255,255,.94);border-radius:15px;padding:28px 20px;text-align:center;line-height:1.6;word-break:break-word;box-shadow:0 2px 8px #00000022}
+.question-box{min-height:230px;display:flex;align-items:center;justify-content:center;font-size:27px}.answer-box{margin-top:18px;font-size:27px;display:none}
+@media(max-width:600px){.container{padding:10px}.question-box,.answer-box{font-size:22px}.search-row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div id="mainScreen" class="screen active">
+<h1>偽Anki</h1>
+<div class="tabs">
+<button id="tabDeck" class="active" onclick="showMainTab('decks')">デッキ</button>
+<button id="tabSearch" onclick="showMainTab('search')">検索</button>
+<button id="tabStats" onclick="showMainTab('stats')">統計</button>
+</div>
+
+<section id="decksTab">
+<div class="card">
+<h2>デッキ</h2>
+<div class="actions" style="justify-content:flex-start"><button class="primary" onclick="createDeck()">＋ デッキを作成</button></div>
+<div id="deckList" class="deck-grid" style="margin-top:14px"></div>
+<div class="bg-setting">
+<h3>全体の背景画像</h3>
+<p class="small">ここで設定した背景画像は、すべてのデッキの一問一答画面に適用されます。変更してもデッキの問題・進捗はリセットされません。</p>
+<input id="globalBackgroundInput" type="file" accept="image/*">
+<img id="globalBackgroundPreview" alt="背景画像">
+<button id="removeGlobalBackgroundButton" class="light" style="display:none" onclick="removeGlobalBackground()">背景画像を削除</button>
+</div>
+</div>
+</section>
+
+<section id="searchTab" style="display:none">
+<div class="card">
+<h2>検索</h2>
+<div class="search-row">
+<input id="searchInput" type="search" placeholder="問題番号・問題文・答え・デッキ名を検索" oninput="renderSearch()">
+<button class="gray" onclick="document.getElementById('searchInput').value='';renderSearch()">クリア</button>
+</div>
+<div id="searchResults" style="margin-top:12px"></div>
+</div>
+</section>
+
+<section id="statsTab" style="display:none">
+<div class="card">
+<h2>統計</h2>
+<div id="statsContent"></div>
+</div>
+</section>
+</div>
+
+<div id="deckEditorScreen" class="screen">
+<button class="gray" onclick="backToDecks()">← デッキ一覧</button>
+<div class="card" style="margin-top:12px">
+<h2 id="editorTitle">デッキ</h2>
+<p class="small">このデッキには「早押し全問題」「早押し復習」「ペーパー全問題」「ペーパー復習」の4つのシートがあります。すべてのシートでExcel / Googleスプレッドシートから3列（問題番号・問題文・答え）をそのまま貼り付けできます。</p>
+
+<div class="sheet-tabs">
+<button id="quickAllTab" class="active" onclick="showSheet('quickAll')">早押し全問題</button>
+<button id="quickReviewTab" onclick="showSheet('quickReview')">早押し復習</button>
+<button id="paperAllTab" onclick="showSheet('paperAll')">ペーパー全問題</button>
+<button id="paperReviewTab" onclick="showSheet('paperReview')">ペーパー復習</button>
+</div>
+
+<section id="quickAllPanel">
+<div class="sheet-note">早押し全問題。問題が表示されると、1文字0.08秒の速度で順番に表示されます。</div>
+<div class="table-wrap"><table><thead><tr><th>問題番号</th><th>問題文</th><th>答え</th></tr></thead><tbody id="quickAllBody"></tbody></table></div>
+<div class="actions">
+<button class="gray" onclick="addRow('quickAll')">＋ 行を追加</button><button class="light" onclick="clearTable('quickAll')">表をクリア</button>
+<button class="primary" onclick="saveCurrentDeck()">保存</button><button class="green" onclick="startQuizFromEditor('quick','all')">早押し全問題で一問一答</button>
+</div>
+</section>
+
+<section id="quickReviewPanel" style="display:none">
+<div class="sheet-note">早押し復習。表計算ソフトから3列（問題番号・問題文・答え）をそのまま貼り付けできます。</div>
+<div class="actions" style="justify-content:flex-start">
+<button class="primary" onclick="startQuizFromEditor('quick','review')">早押し復習で一問一答</button>
+</div>
+<h3 style="margin-top:20px">早押し復習シート</h3>
+<div class="table-wrap"><table><thead><tr><th>問題番号</th><th>問題文</th><th>答え</th></tr></thead><tbody id="quickReviewBody"></tbody></table></div>
+<div class="actions"><button class="gray" onclick="addRow('quickReview')">＋ 行を追加</button><button class="light" onclick="clearTable('quickReview')">表をクリア</button><button class="primary" onclick="saveCurrentDeck()">保存</button></div>
+</section>
+
+<section id="paperAllPanel" style="display:none">
+<div class="sheet-note">ペーパー全問題。読み上げ・文字送りはありません。問題が表示されたら最初から「答えを出す」が表示されます。</div>
+<div class="table-wrap"><table><thead><tr><th>問題番号</th><th>問題文</th><th>答え</th></tr></thead><tbody id="paperAllBody"></tbody></table></div>
+<div class="actions">
+<button class="gray" onclick="addRow('paperAll')">＋ 行を追加</button><button class="light" onclick="clearTable('paperAll')">表をクリア</button>
+<button class="primary" onclick="saveCurrentDeck()">保存</button><button class="green" onclick="startQuizFromEditor('paper','all')">ペーパー全問題で一問一答</button>
+</div>
+</section>
+
+<section id="paperReviewPanel" style="display:none">
+<div class="sheet-note">ペーパー復習。表計算ソフトから3列（問題番号・問題文・答え）をそのまま貼り付けできます。</div>
+<div class="actions" style="justify-content:flex-start">
+<button class="primary" onclick="startQuizFromEditor('paper','review')">ペーパー復習で一問一答</button>
+</div>
+<h3 style="margin-top:20px">ペーパー復習シート</h3>
+<div class="table-wrap"><table><thead><tr><th>問題番号</th><th>問題文</th><th>答え</th></tr></thead><tbody id="paperReviewBody"></tbody></table></div>
+<div class="actions"><button class="gray" onclick="addRow('paperReview')">＋ 行を追加</button><button class="light" onclick="clearTable('paperReview')">表をクリア</button><button class="primary" onclick="saveCurrentDeck()">保存</button></div>
+</section>
+</div>
+</div>
+
+<div id="quizScreen" class="screen">
+<div class="quiz-top"><button onclick="leaveQuiz()">← デッキ画面</button><button onclick="goSearchFromQuiz()">検索</button></div>
+<div class="quiz-content">
+<div id="quizMeta" class="quiz-meta"></div><div id="quizNumber" class="quiz-number"></div>
+<div id="questionBox" class="question-box"></div><div id="answerBox" class="answer-box"></div>
+<div id="countdownDisplay" style="display:none;text-align:center;font-size:28px;font-weight:700;margin:12px 0;background:rgba(255,255,255,.94);border-radius:10px;padding:8px"></div>
+<div class="actions"><button id="knowButton" class="green" style="font-size:22px;min-width:180px;display:none" onclick="knowAnswer()">わかった</button>
+<button id="showAnswerButton" class="primary" style="font-size:20px;display:none" onclick="showAnswer()">答えを出す</button></div>
+<div id="resultButtons" class="actions" style="display:none"><button class="green" onclick="markCorrect()">正解</button><button class="red" onclick="markWrong()">誤答</button></div>
+</div></div>
+
+<script>
+const STORAGE_KEY="anki_like_qa_v4_reset";
+let state={version:3,decks:{},activeDeckId:null,backgroundImage:null,stats:{date:"",todayCorrect:0,todayWrong:0,totalCorrect:0,totalWrong:0}};
+let quizOrder=[],currentIndex=0,wrongQuestions=[],quizFamily="quick",quizMode="all",typingTimer=null,autoAnswerTimer=null,countdownTimer=null;
+
+function uid(){return "d_"+Date.now()+"_"+Math.random().toString(36).slice(2,9)}
+function blankFamily(){return {all:[],review:[]}}
+function blankProgress(){return {all:null,review:null}}
+function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+
+function normalizeDeck(d){
+  if(!d.quick||!d.paper){
+    const oldQuestions=Array.isArray(d.questions)?d.questions:[];
+    const oldReview=Array.isArray(d.reviewQuestions)?d.reviewQuestions:[];
+    const oldProgress=d.progress||null;
+    d.quick={all:oldQuestions,review:oldReview};
+    d.paper=blankFamily();
+    d.progress={quick:blankProgress(),paper:blankProgress()};
+    if(oldProgress&&oldProgress.mode){
+      d.progress.quick[oldProgress.mode]=oldProgress;
+    }
+    delete d.questions;delete d.reviewQuestions;delete d.progressOld;
+  }
+  ["quick","paper"].forEach(f=>{
+    if(!d[f]||typeof d[f]!=="object")d[f]=blankFamily();
+    if(!Array.isArray(d[f].all))d[f].all=[];
+    if(!Array.isArray(d[f].review))d[f].review=[];
+  });
+  if(!d.progress||typeof d.progress!=="object")d.progress={quick:blankProgress(),paper:blankProgress()};
+  ["quick","paper"].forEach(f=>{
+    if(!d.progress[f]||typeof d.progress[f]!=="object")d.progress[f]=blankProgress();
+    if(!("all" in d.progress[f]))d.progress[f].all=null;
+    if(!("review" in d.progress[f]))d.progress[f].review=null;
+  });
+  if(!("name" in d))d.name="デッキ";
+  return d;
+}
+function loadState(){
+  try{const x=JSON.parse(localStorage.getItem(STORAGE_KEY));if(x&&x.decks)state=x;
+  }catch(e){}
+  if(!state.decks)state.decks={};
+  if(!("backgroundImage" in state))state.backgroundImage=null;
+  if(!state.stats)state.stats={date:todayKey(),todayCorrect:0,todayWrong:0,totalCorrect:0,totalWrong:0};
+  Object.keys(state.decks).forEach(id=>normalizeDeck(state.decks[id]));
+  if(state.stats.date!==todayKey()){state.stats.date=todayKey();state.stats.todayCorrect=0;state.stats.todayWrong=0}
+  persist();
+}
+function persist(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+function deck(){return state.decks[state.activeDeckId]}
+function family(f){return deck()[f]}
+function showScreen(id){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active")}
+function showMainTab(tab){
+  const buttonIds={decks:"tabDeck",search:"tabSearch",stats:"tabStats"};
+  ["decks","search","stats"].forEach(x=>{
+    const panel=document.getElementById(x+"Tab");
+    const button=document.getElementById(buttonIds[x]);
+    if(panel)panel.style.display=x===tab?"block":"none";
+    if(button)button.classList.toggle("active",x===tab);
+  });
+  if(tab==="decks")renderDecks();
+  else if(tab==="search")renderSearch();
+  else if(tab==="stats")renderStats();
+}
+function createDeck(){
+  const name=prompt("デッキ名を入力してください");if(!name||!name.trim())return;
+  const id=uid();state.decks[id]={id,name:name.trim(),quick:blankFamily(),paper:blankFamily(),progress:{quick:blankProgress(),paper:blankProgress()}};
+  state.activeDeckId=id;persist();openEditor(id);
+}
+function progressText(d,f){
+  const p=d.progress[f],a=p.all,r=p.review;
+  const aText=a&&a.quizOrder?Math.min(a.currentIndex,a.quizOrder.length)+" / "+a.quizOrder.length:"0 / "+d[f].all.length;
+  const rText=r&&r.quizOrder?Math.min(r.currentIndex,r.quizOrder.length)+" / "+r.quizOrder.length:"0 / "+d[f].review.length;
+  return `早押し進捗`==="x"?"":f==="quick"?`全問題 ${aText}・復習 ${rText}`:`全問題 ${aText}・復習 ${rText}`;
+}
+function renderDecks(){
+  const el=document.getElementById("deckList"),ids=Object.keys(state.decks);
+  if(!ids.length){el.innerHTML='<div class="empty">デッキがありません。<br>「＋ デッキを作成」から作成してください。</div>';return}
+  el.innerHTML=ids.map(id=>{
+    const d=state.decks[id],q=d.quick,p=d.paper;
+    return `<div class="deck-card"><h3>${esc(d.name)}</h3>
+    <div class="progress-line small">早押し：${progressText(d,"quick")}</div>
+    <div class="progress-line small">ペーパー：${progressText(d,"paper")}</div>
+    <div class="deck-top-actions">
+    <button class="primary" onclick="openEditor('${id}')">編集</button>
+    <button class="light" onclick="renameDeck('${id}')">名前変更</button>
+    <button class="red" onclick="deleteDeck('${id}')">削除</button>
+    </div>
+    <div class="deck-quiz-actions">
+    ${q.all.length?`<button class="yamabuki" onclick="startQuiz('${id}','quick','all')">早押し全問題</button>`:""}
+    ${q.review.length?`<button class="yamabuki" onclick="startQuiz('${id}','quick','review')">早押し復習</button>`:""}
+    ${p.all.length?`<button class="yamabuki" onclick="startQuiz('${id}','paper','all')">ペーパー全問題</button>`:""}
+    ${p.review.length?`<button class="yamabuki" onclick="startQuiz('${id}','paper','review')">ペーパー復習</button>`:""}
+    </div></div>`;
+  }).join("");
+}
+function renameDeck(id){const d=state.decks[id],n=prompt("デッキ名",d.name);if(n&&n.trim()){d.name=n.trim();persist();renderDecks()}}
+function deleteDeck(id){if(!confirm("このデッキと保存した進捗を削除しますか？"))return;delete state.decks[id];if(state.activeDeckId===id)state.activeDeckId=null;persist();renderDecks()}
+function openEditor(id){state.activeDeckId=id;persist();showScreen("deckEditorScreen");document.getElementById("editorTitle").textContent=deck().name;renderAllTables();showSheet("quickAll")}
+const sheetIds=["quickAll","quickReview","paperAll","paperReview"];
+function syncSheet(sheet){
+  const d=deck();
+  if(!d)return;
+  const f=sheet.startsWith("quick")?"quick":"paper";
+  const m=sheet.endsWith("Review")?"review":"all";
+  d[f][m]=readTable(sheet);
+  reconcileFamilyProgress(d,f,m);
+  persist();
+}
+function showSheet(sheet){
+  // シートを切り替える前に、現在表示中のシートの内容を保存する。
+  const current=sheetIds.find(s=>document.getElementById(s+"Panel").style.display!=="none");
+  if(current)syncSheet(current);
+  sheetIds.forEach(s=>{document.getElementById(s+"Panel").style.display=s===sheet?"block":"none";document.getElementById(s+"Tab").classList.toggle("active",s===sheet)});
+  if(sheet==="quickReview"||sheet==="paperReview")renderReviewPanels(sheet.startsWith("quick")?"quick":"paper");
+}
+function makeEditableRow(q){
+  const tr=document.createElement("tr");
+  [q.number,q.question,q.answer].forEach(v=>{const td=document.createElement("td");td.contentEditable="true";td.textContent=v||"";tr.appendChild(td)});
+  return tr;
+}
+function renderSimpleTable(f){
+  const tb=document.getElementById(f+"Body");tb.innerHTML="";
+  const qs=family(f).all;
+  (qs.length?qs:[{number:"",question:"",answer:""}]).forEach(q=>tb.appendChild(makeEditableRow(q)));
+}
+function renderReviewTable(f){
+  const tb=document.getElementById(f+"ReviewBody");tb.innerHTML="";
+  const qs=family(f).review;
+  (qs.length?qs:[{number:"",question:"",answer:""}]).forEach(q=>tb.appendChild(makeEditableRow(q)));
+}
+function renderAllTables(){renderSimpleTable("quickAll");renderSimpleTable("paperAll");renderReviewTable("quickReview");renderReviewTable("paperReview")}
+function addRow(sheet){document.getElementById(sheet+"Body").appendChild(makeEditableRow({number:"",question:"",answer:""}))}
+function clearTable(sheet){if(confirm("このシートの入力内容をすべて消しますか？")){document.getElementById(sheet+"Body").innerHTML="";addRow(sheet)}}
+function readTable(sheet){
+  return [...document.querySelectorAll("#"+sheet+"Body tr")].map(tr=>[...tr.querySelectorAll("td")].map(td=>td.innerText.trim())).filter(a=>a.length>=3&&a.every(Boolean)).map(a=>({number:a[0],question:a[1],answer:a[2]}));
+}
+function installPaste(sheet){
+  document.getElementById(sheet+"Body").addEventListener("paste",e=>{
+    const text=(e.clipboardData||window.clipboardData).getData("text");
+    if(!text.includes("\t")&&!text.includes("\n"))return;
+    e.preventDefault();
+    const rows=text.replace(/\r/g,"").split("\n").filter(x=>x.trim());
+    const tb=document.getElementById(sheet+"Body");tb.innerHTML="";
+    rows.forEach(r=>{const c=r.split("\t");tb.appendChild(makeEditableRow({number:c[0]||"",question:c[1]||"",answer:c[2]||""}))});
+    syncSheet(sheet);
+  });
+}
+sheetIds.forEach(installPaste);
+
+function reconcileFamilyProgress(d,f,mode){
+  const p=d.progress[f][mode];if(!p||!Array.isArray(p.quizOrder))return;
+  const byNumber=new Map(family(f)[mode].map(q=>[String(q.number),q]));
+  p.quizOrder=p.quizOrder.map(old=>{const fresh=byNumber.get(String(old.number));return fresh?{...fresh}:{...old}}).filter(q=>byNumber.has(String(q.number)));
+  p.currentIndex=Math.min(p.currentIndex||0,p.quizOrder.length);
+  p.wrongQuestions=(p.wrongQuestions||[]).filter(n=>byNumber.has(String(n)));
+  if(!p.quizOrder.length||p.currentIndex>=p.quizOrder.length)d.progress[f][mode]=null;
+}
+function saveCurrentDeck(){
+  const d=deck();if(!d)return;
+  d.quick.all=readTable("quickAll");d.quick.review=readTable("quickReview");
+  d.paper.all=readTable("paperAll");d.paper.review=readTable("paperReview");
+  ["quick","paper"].forEach(f=>["all","review"].forEach(m=>reconcileFamilyProgress(d,f,m)));
+  persist();renderReviewPanels("quick");renderReviewPanels("paper");renderDecks();alert("デッキを保存しました。進捗は維持されています。");
+}
+function renderReviewPanels(f){renderReviewTable(f)}
+function startQuizFromEditor(f,m){saveCurrentDeck();if(family(f)[m].length)startQuiz(deck().id,f,m)}
+function startQuiz(id,f="quick",m="all",resume=true){
+  const d=state.decks[id],source=d?.[f]?.[m];if(!d||!source?.length){alert("問題がありません。");return}
+  state.activeDeckId=id;quizFamily=f;quizMode=m;
+  const p=d.progress[f][m],valid=new Set(source.map(q=>String(q.number)));
+  if(resume&&p&&Array.isArray(p.quizOrder)&&p.quizOrder.length&&p.quizOrder.every(q=>valid.has(String(q.number)))&&p.currentIndex<p.quizOrder.length){
+    quizOrder=p.quizOrder.map(q=>({...source.find(x=>String(x.number)===String(q.number)),...q}));currentIndex=p.currentIndex;wrongQuestions=p.wrongQuestions||[];
+  }else{
+    quizOrder=source.map(q=>({...q}));shuffle(quizOrder);currentIndex=0;wrongQuestions=[];d.progress[f][m]={mode:m,quizOrder,currentIndex,wrongQuestions};persist();
+  }
+  applyQuizBackground();showScreen("quizScreen");showQuestion();
+}
+function applyQuizBackground(){const q=document.getElementById("quizScreen"),u=state.backgroundImage;q.style.backgroundImage=u?`url("${u}")`:"none"}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}
+function showQuestion(){
+  clearTimers();const c=quizOrder[currentIndex];if(!c){showResult();return}
+  document.getElementById("quizMeta").textContent=`${deck().name}｜${quizFamily==="quick"?"早押し":"ペーパー"}${quizMode==="review"?"復習":"全問題"}｜問題番号：${c.number}`;
+  document.getElementById("quizNumber").textContent=`${currentIndex+1} / ${quizOrder.length} 問目`;
+  const qb=document.getElementById("questionBox"),ab=document.getElementById("answerBox");qb.textContent="";ab.textContent=c.answer;ab.style.display="none";
+  document.getElementById("resultButtons").style.display="none";
+  if(quizFamily==="quick"){
+    document.getElementById("knowButton").style.display="inline-block";document.getElementById("showAnswerButton").style.display="none";
+    let pos=0;typingTimer=setInterval(()=>{if(pos>=c.question.length){clearInterval(typingTimer);typingTimer=null;return}qb.textContent+=c.question.charAt(pos++);},80);
+  }else{
+    document.getElementById("knowButton").style.display="none";document.getElementById("showAnswerButton").style.display="inline-block";qb.textContent=c.question;
+  }
+  saveProgress();
+}
+function knowAnswer(){if(typingTimer!==null){clearInterval(typingTimer);typingTimer=null}if(autoAnswerTimer!==null){clearTimeout(autoAnswerTimer);autoAnswerTimer=null}if(countdownTimer!==null){clearInterval(countdownTimer);countdownTimer=null}document.getElementById("knowButton").style.display="none";document.getElementById("showAnswerButton").style.display="inline-block";const el=document.getElementById("countdownDisplay");let n=3;el.textContent=`答えまで ${n}秒`;el.style.display="block";countdownTimer=setInterval(()=>{n--;if(n<=0){clearInterval(countdownTimer);countdownTimer=null;el.style.display="none";showAnswer()}else{el.textContent=`答えまで ${n}秒`}},1000)}
+function showAnswer(){clearTimers();const c=quizOrder[currentIndex];document.getElementById("questionBox").textContent=c.question;document.getElementById("answerBox").textContent=c.answer;document.getElementById("answerBox").style.display="block";document.getElementById("showAnswerButton").style.display="none";document.getElementById("knowButton").style.display="none";document.getElementById("resultButtons").style.display="flex"}
+function recordResult(type){
+  if(state.stats.date!==todayKey()){state.stats.date=todayKey();state.stats.todayCorrect=0;state.stats.todayWrong=0}
+  if(type==="correct"){state.stats.todayCorrect++;state.stats.totalCorrect++}else{state.stats.todayWrong++;state.stats.totalWrong++}
+  persist();
+}
+function markCorrect(){recordResult("correct");nextQuestion()}
+function markWrong(){wrongQuestions.push(quizOrder[currentIndex].number);recordResult("wrong");nextQuestion()}
+function nextQuestion(){clearTimers();currentIndex++;if(currentIndex>=quizOrder.length){saveProgress();showResult();return}saveProgress();showQuestion()}
+function saveProgress(){const d=deck();if(!d)return;d.progress[quizFamily][quizMode]={mode:quizMode,quizOrder:quizOrder.map(q=>({...q})),currentIndex,wrongQuestions:[...wrongQuestions]};persist()}
+function showResult(){
+  const d=deck();if(d)d.progress[quizFamily][quizMode]=null;persist();
+  alert(wrongQuestions.length?`終了！\n誤答した問題の番号：${wrongQuestions.join("、")}`:"終了！\n全問正解！");
+  showMainDeckAfterQuiz();
+}
+function leaveQuiz(){clearTimers();saveProgress();showMainDeckAfterQuiz()}
+function showMainDeckAfterQuiz(){showScreen("mainScreen");showMainTab("decks")}
+function goSearchFromQuiz(){clearTimers();saveProgress();showScreen("mainScreen");showMainTab("search")}
+function backToDecks(){showScreen("mainScreen");showMainTab("decks")}
+
+function renderSearch(){
+  const q=(document.getElementById("searchInput").value||"").trim().toLowerCase(),out=[];
+  Object.values(state.decks).forEach(d=>["quick","paper"].forEach(f=>["all","review"].forEach(m=>familyOf(d,f,m).forEach((x,i)=>{
+    const hay=[d.name,f==="quick"?"早押し":"ペーパー",m==="all"?"全問題":"復習",x.number,x.question,x.answer].join("\n").toLowerCase();
+    if(!q||hay.includes(q))out.push({d,f,m,x,i});
+  }))));
+  const el=document.getElementById("searchResults");
+  el.innerHTML=out.length?out.map(r=>`<div class="result-item" onclick="openSearchResult('${r.d.id}')"><span class="badge">${esc(r.d.name)}</span><span class="badge">${r.f==="quick"?"早押し":"ペーパー"}${r.m==="review"?"復習":"全問題"}</span><b>問題番号：${esc(r.x.number)}</b><div style="margin-top:5px">${esc(r.x.question)}</div><div class="muted">答え：${esc(r.x.answer)}</div></div>`).join(""):'<div class="empty">該当する問題はありません。</div>';
+}
+function familyOf(d,f,m){return d[f][m]||[]}
+function openSearchResult(id){openEditor(id)}
+
+function renderStats(){
+  const s=state.stats,dlist=Object.values(state.decks);
+  let total=0,review=0;
+  dlist.forEach(d=>{["quick","paper"].forEach(f=>{total+=d[f].all.length;review+=d[f].review.length})});
+  const notReview=Math.max(0,total-review),pct=total?review/total*100:0;
+  document.getElementById("statsContent").innerHTML=`
+  <h3>問題の内訳</h3>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="label">合計で入っている問題</div><div class="value">${total}</div></div>
+    <div class="stat-box"><div class="label">「復習」に入っている問題</div><div class="value">${review}</div></div>
+    <div class="stat-box"><div class="label">復習に入っていない問題</div><div class="value">${notReview}</div></div>
+  </div>
+  <div class="chart-wrap"><div class="pie" style="background:conic-gradient(#1976d2 0 ${pct}%,#ddd ${pct}% 100%)"></div>
+  <div class="legend"><span class="review">復習 ${review}</span><span class="notreview">復習以外 ${notReview}</span></div>
+  <div class="small">復習登録数は、各全問題シートに対応する復習シートの登録数を合計しています。</div></div>
+  <h3 style="margin-top:25px">今日（${esc(s.date)}）</h3>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="label">正解</div><div class="value">${s.todayCorrect}</div></div>
+    <div class="stat-box"><div class="label">誤答</div><div class="value">${s.todayWrong}</div></div>
+    <div class="stat-box"><div class="label">合計</div><div class="value">${s.todayCorrect+s.todayWrong}</div></div>
+  </div>
+  <h3 style="margin-top:25px">これまでの累計</h3>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="label">正解</div><div class="value">${s.totalCorrect}</div></div>
+    <div class="stat-box"><div class="label">誤答</div><div class="value">${s.totalWrong}</div></div>
+    <div class="stat-box"><div class="label">合計</div><div class="value">${s.totalCorrect+s.totalWrong}</div></div>
+  </div>`;
+}
+document.getElementById("globalBackgroundInput").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{state.backgroundImage=r.result;persist();setGlobalBackground(r.result)};r.readAsDataURL(f);
+});
+function setGlobalBackground(u){const img=document.getElementById("globalBackgroundPreview"),btn=document.getElementById("removeGlobalBackgroundButton");if(u){img.src=u;img.style.display="block";btn.style.display="inline-block"}else{img.src="";img.style.display="none";btn.style.display="none"}}
+function removeGlobalBackground(){state.backgroundImage=null;persist();document.getElementById("globalBackgroundInput").value="";setGlobalBackground(null)}
+function clearTimers(){if(typingTimer!==null){clearInterval(typingTimer);typingTimer=null}if(autoAnswerTimer!==null){clearTimeout(autoAnswerTimer);autoAnswerTimer=null}if(countdownTimer!==null){clearInterval(countdownTimer);countdownTimer=null}const el=document.getElementById("countdownDisplay");if(el){el.style.display="none"}}
+function esc(s){const d=document.createElement("div");d.textContent=String(s??"");return d.innerHTML}
+window.addEventListener("beforeunload",()=>{try{if(document.getElementById("quizScreen").classList.contains("active"))saveProgress()}catch(e){}});
+
+loadState();setGlobalBackground(state.backgroundImage);renderDecks();
+</script>
+</body>
+</html>
